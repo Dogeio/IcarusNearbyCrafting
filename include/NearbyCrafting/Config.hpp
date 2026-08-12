@@ -28,6 +28,7 @@ namespace NearbyCrafting
         std::uint8_t deposit_modifier_mask{deposit_modifier_shift};
         bool deposit_include_bench_inventories{true};
         std::vector<std::string> deposit_excluded_items{};
+        std::vector<std::string> deposit_excluded_containers{};
         bool exclude_client_only_inventories{true};
         bool exclude_remove_only_inventories{true};
     };
@@ -42,6 +43,10 @@ namespace NearbyCrafting
     [[nodiscard]] auto normalize_deposit_item_name(std::wstring_view value) -> std::wstring;
     [[nodiscard]] auto is_deposit_item_name_excluded(
         std::wstring_view display_name,
+        const std::vector<std::wstring>& normalized_exclusions) -> bool;
+    [[nodiscard]] auto normalize_container_class_name(std::wstring_view value) -> std::wstring;
+    [[nodiscard]] auto is_container_class_excluded(
+        std::wstring_view class_name,
         const std::vector<std::wstring>& normalized_exclusions) -> bool;
     [[nodiscard]] auto merge_reloadable_config(
         const Config& current,

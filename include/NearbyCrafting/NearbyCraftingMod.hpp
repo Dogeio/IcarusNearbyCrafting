@@ -234,6 +234,7 @@ namespace NearbyCrafting
         RC::Unreal::FProperty* m_transfer_to_inventory_property{};
         DepositFilterBindings m_deposit_filter_bindings{};
         std::vector<std::wstring> m_normalized_deposit_exclusions{};
+        std::vector<std::wstring> m_normalized_deposit_container_exclusions{};
         std::vector<std::unique_ptr<HookBinding>> m_hooks{};
         std::unique_ptr<PLH::x64Detour> m_server_queue_detour{};
         std::uint64_t m_server_queue_trampoline{};

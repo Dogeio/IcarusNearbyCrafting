@@ -225,6 +225,54 @@ namespace NearbyCrafting
             return items;
         }
 
+        auto parse_deposit_excluded_containers(const std::string& value) -> std::vector<std::string>
+        {
+            std::vector<std::string> containers{};
+            std::size_t start{};
+            while (start <= value.size())
+            {
+                const auto separator = value.find(',', start);
+                auto container = trim(value.substr(start, separator - start));
+                if (container.empty())
+                {
+                    if (value.empty())
+                    {
+                        return containers;
+                    }
+                    throw std::invalid_argument(
+                        "expected comma-separated container class names without empty entries");
+                }
+
+                const auto normalized = normalize_container_class_name(
+                    std::wstring{container.begin(), container.end()});
+                if (normalized.empty())
+                {
+                    throw std::invalid_argument("expected a container Blueprint class name");
+                }
+                if (!normalized.ends_with(L"_c"))
+                {
+                    throw std::invalid_argument(
+                        "expected a container Blueprint class name ending in _C");
+                }
+                const auto duplicate = std::ranges::any_of(
+                    containers, [&normalized](const std::string& existing) {
+                        return normalize_container_class_name(
+                            std::wstring{existing.begin(), existing.end()}) == normalized;
+                    });
+                if (!duplicate)
+                {
+                    containers.emplace_back(std::move(container));
+                }
+
+                if (separator == std::string::npos)
+                {
+                    break;
+                }
+                start = separator + 1;
+            }
+            return containers;
+        }
+
         template <typename Number>
         auto in_range(const Number value, const Number minimum, const Number maximum) -> Number
         {
@@ -269,6 +317,39 @@ namespace NearbyCrafting
             normalized_exclusions.end();
     }
 
+    auto normalize_container_class_name(const std::wstring_view value) -> std::wstring
+    {
+        const auto first = std::find_if_not(value.begin(), value.end(), [](const wchar_t character) {
+            return std::iswspace(character) != 0;
+        });
+        const auto last = std::find_if_not(value.rbegin(), value.rend(), [](const wchar_t character) {
+            return std::iswspace(character) != 0;
+        }).base();
+        if (first >= last)
+        {
+            return {};
+        }
+
+        std::wstring normalized{first, last};
+        if (const auto delimiter = normalized.find_last_of(L"/.: "); delimiter != std::wstring::npos)
+        {
+            normalized.erase(0, delimiter + 1);
+        }
+        std::transform(normalized.begin(), normalized.end(), normalized.begin(), [](const wchar_t character) {
+            return static_cast<wchar_t>(std::towlower(character));
+        });
+        return normalized;
+    }
+
+    auto is_container_class_excluded(
+        const std::wstring_view class_name,
+        const std::vector<std::wstring>& normalized_exclusions) -> bool
+    {
+        const auto normalized_class_name = normalize_container_class_name(class_name);
+        return std::ranges::find(normalized_exclusions, normalized_class_name) !=
+            normalized_exclusions.end();
+    }
+
     auto merge_reloadable_config(const Config& current, const Config& loaded) -> Config
     {
         auto merged = current;
@@ -279,6 +360,7 @@ namespace NearbyCrafting
         merged.include_bench_inventories = loaded.include_bench_inventories;
         merged.deposit_include_bench_inventories = loaded.deposit_include_bench_inventories;
         merged.deposit_excluded_items = loaded.deposit_excluded_items;
+        merged.deposit_excluded_containers = loaded.deposit_excluded_containers;
         merged.exclude_client_only_inventories = loaded.exclude_client_only_inventories;
         merged.exclude_remove_only_inventories = loaded.exclude_remove_only_inventories;
         return merged;
@@ -377,6 +459,11 @@ namespace NearbyCrafting
                 else if (key == "depositexcludeditems")
                 {
                     result.config.deposit_excluded_items = parse_deposit_excluded_items(value);
+                }
+                else if (key == "depositexcludedcontainers")
+                {
+                    result.config.deposit_excluded_containers =
+                        parse_deposit_excluded_containers(value);
                 }
                 else if (key == "excludeclientonlyinventories")
                 {

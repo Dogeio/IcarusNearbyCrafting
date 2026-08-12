@@ -93,7 +93,11 @@ still require a restart, as listed below.
   to skip native repair-hook installation when troubleshooting compatibility problems.
 - `DepositExcludedItems` is a comma-separated list of full in-game item names that
   must remain in the backpack, such as `Composite Arrow, 12-Gauge Slug`.
-  Matching is case-insensitive but exact; partial names such as Slug and internal item identifiers do not match.Names use the language currently selected in Icarus.
+  Matching is case-insensitive but exact; partial names such as `Slug` and internal item
+  identifiers do not match. Names use the language currently selected in Icarus.
+- `DepositExcludedContainers` is a comma-separated list of container Blueprint class
+  names that Quick Deposit must skip. Search `UE4SS.log` for `Deposit container identifier`
+  and copy the value. Identifiers generally look like `BP_Bench_Name_C`.
 - `DepositEnabled` enables or disables the nearby-deposit shortcut.
 - `DepositKey` sets its key. Common examples are `O`, `F8`, `HOME`, `PAGE_UP`, and
   `NUM_ZERO`.
@@ -128,6 +132,7 @@ configuration reload:
 - `PlayerCacheRefreshMilliseconds`
 - `DepositIncludeBenchInventories`
 - `DepositExcludedItems`
+- `DepositExcludedContainers`
 - `ExcludeClientOnlyInventories`
 - `ExcludeRemoveOnlyInventories`
 

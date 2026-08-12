@@ -747,6 +747,15 @@ namespace NearbyCrafting
 
         m_source_class_cache.emplace(actor_class, classification);
 
+        if (classification.is_storage || classification.is_bench)
+        {
+            Output::send<LogLevel::Verbose>(
+                STR("[NearbyCrafting] Deposit container identifier: {} (storage={}, bench={}).\n"),
+                actor_class->GetNamePrivate().ToString(),
+                classification.is_storage,
+                classification.is_bench);
+        }
+
 #if defined(NEARBYCRAFTING_DEBUG)
         if (classification.is_storage || classification.is_bench)
         {

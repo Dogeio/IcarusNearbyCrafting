@@ -63,6 +63,7 @@ auto main() -> int
             "DepositModifier=CTRL+SHIFT\n"
             "DepositIncludeBenchInventories=false\n"
             "DepositExcludedItems=Composite Arrow, 12-Gauge Slug, composite arrow\n"
+            "DepositExcludedContainers=BP_Deep_Freeze_C, bp_deep_freeze_c, BP_IceBox_C\n"
             "ExcludeClientOnlyInventories=false\n"
             "ExcludeRemoveOnlyInventories=false\n");
         expect(valid.file_found, "valid config should be found");
@@ -85,6 +86,7 @@ auto main() -> int
         expect(valid.config.deposit_excluded_items.size() == 2, "deposit exclusions should be parsed and deduplicated");
         expect(valid.config.deposit_excluded_items[0] == "Composite Arrow", "deposit exclusion spelling should be preserved");
         expect(valid.config.deposit_excluded_items[1] == "12-Gauge Slug", "multiple deposit exclusions should be applied");
+        expect(valid.config.deposit_excluded_containers.size() == 2, "container exclusions should be normalized and deduplicated");
         expect(!valid.config.exclude_client_only_inventories, "client-only setting should be applied");
         expect(!valid.config.exclude_remove_only_inventories, "remove-only setting should be applied");
 
@@ -157,6 +159,18 @@ auto main() -> int
         expect(invalid_deposit_exclusions.warnings.size() == 1, "empty exclusion entries should be rejected");
         expect(invalid_deposit_exclusions.config.deposit_excluded_items.empty(), "an invalid exclusion list should retain its default");
 
+        const auto invalid_container_exclusions = load_text_config(
+            "invalid-container-exclusions",
+            "DepositExcludedContainers=BP_Deep_Freeze_C,,BP_IceBox_C\n");
+        expect(invalid_container_exclusions.warnings.size() == 1, "empty container exclusion entries should be rejected");
+        expect(invalid_container_exclusions.config.deposit_excluded_containers.empty(), "an invalid container exclusion list should retain its default");
+
+        const auto missing_container_suffix = load_text_config(
+            "missing-container-suffix",
+            "DepositExcludedContainers=BP_Deep_Freeze\n");
+        expect(missing_container_suffix.warnings.size() == 1, "container exclusions without _C should be rejected");
+        expect(missing_container_suffix.config.deposit_excluded_containers.empty(), "a missing container suffix should retain the default exclusion list");
+
         const std::vector<std::wstring> normalized_exclusions{
             NearbyCrafting::normalize_deposit_item_name(L"Composite Arrow"),
             NearbyCrafting::normalize_deposit_item_name(L"12-Gauge Slug"),
@@ -177,6 +191,27 @@ auto main() -> int
             !NearbyCrafting::is_deposit_item_name_excluded(L"Shell_Slug", normalized_exclusions),
             "internal item identifiers should not match an exclusion");
 
+        const std::vector<std::wstring> normalized_container_exclusions{
+            NearbyCrafting::normalize_container_class_name(L"BP_Deep_Freeze_C"),
+        };
+        expect(
+            NearbyCrafting::is_container_class_excluded(
+                L"bp_deep_freeze_c", normalized_container_exclusions),
+            "container class matching should be case-insensitive");
+        expect(
+            NearbyCrafting::is_container_class_excluded(
+                L"/Game/Deployables/Food/BP_Deep_Freeze.BP_Deep_Freeze_C",
+                normalized_container_exclusions),
+            "container class matching should accept a pasted Unreal object path");
+        expect(
+            !NearbyCrafting::is_container_class_excluded(
+                L"BP_Deep_Freeze", normalized_container_exclusions),
+            "container class matching should require the generated suffix");
+        expect(
+            !NearbyCrafting::is_container_class_excluded(
+                L"BP_IceBox_C", normalized_container_exclusions),
+            "other container class names should not match an exclusion");
+
         NearbyCrafting::Config current{};
         current.enabled = false;
         current.reload_config_key = "F6";
@@ -193,6 +228,7 @@ auto main() -> int
         changed.include_bench_inventories = false;
         changed.deposit_include_bench_inventories = false;
         changed.deposit_excluded_items = {"Composite Arrow"};
+        changed.deposit_excluded_containers = {"BP_Deep_Freeze_C", "BP_IceBox_C"};
         changed.exclude_client_only_inventories = false;
         changed.exclude_remove_only_inventories = false;
 
@@ -204,6 +240,7 @@ auto main() -> int
         expect(!reloaded.include_bench_inventories, "reload should apply crafting bench inclusion");
         expect(!reloaded.deposit_include_bench_inventories, "reload should apply deposit bench inclusion");
         expect(reloaded.deposit_excluded_items == changed.deposit_excluded_items, "reload should apply deposit exclusions");
+        expect(reloaded.deposit_excluded_containers == changed.deposit_excluded_containers, "reload should apply container exclusions");
         expect(!reloaded.exclude_client_only_inventories, "reload should apply the client-only inventory filter");
         expect(!reloaded.exclude_remove_only_inventories, "reload should apply the remove-only inventory filter");
         expect(!reloaded.enabled, "reload should preserve Enabled");

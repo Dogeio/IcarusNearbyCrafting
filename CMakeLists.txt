@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(NearbyCrafting VERSION 1.3.4 LANGUAGES CXX)
+project(NearbyCrafting VERSION 1.3.5 LANGUAGES CXX)
 
 include(CTest)
 

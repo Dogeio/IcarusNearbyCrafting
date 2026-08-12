@@ -41,7 +41,7 @@ namespace NearbyCrafting
         }
 
         Output::send<LogLevel::Verbose>(
-            STR("[NearbyCrafting] Native mod loaded (enabled={}, reload-key={}, radius={} cm, bench-cache={} ms, player-cache={} ms, bench-sources={}, repairs={}, deposit={}, deposit-key={}, deposit-modifiers={}, deposit-benches={}, deposit-exclusions={}).\n"),
+            STR("[NearbyCrafting] Native mod loaded (enabled={}, reload-key={}, radius={} cm, bench-cache={} ms, player-cache={} ms, bench-sources={}, repairs={}, deposit={}, deposit-key={}, deposit-modifiers={}, deposit-benches={}, item-exclusions={}, container-exclusions={}).\n"),
             m_config.enabled,
             narrow_ascii(m_config.reload_config_key),
             m_config.scan_radius_centimeters,
@@ -53,7 +53,8 @@ namespace NearbyCrafting
             narrow_ascii(m_config.deposit_key),
             m_config.deposit_modifier_mask,
             m_config.deposit_include_bench_inventories,
-            m_config.deposit_excluded_items.size());
+            m_config.deposit_excluded_items.size(),
+            m_config.deposit_excluded_containers.size());
 
 #if defined(NEARBYCRAFTING_DEBUG)
         Output::send<LogLevel::Normal>(

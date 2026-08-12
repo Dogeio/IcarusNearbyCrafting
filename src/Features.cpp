@@ -365,7 +365,7 @@ namespace NearbyCrafting
         if (!update_deposit_exclusions(m_config))
         {
             Output::send<LogLevel::Warning>(
-                STR("[NearbyCrafting] Deposit exclusions could not be prepared safely and were disabled; the shortcut will continue without exclusion filtering.\n"));
+                STR("[NearbyCrafting] Deposit item exclusions could not be prepared safely and were disabled; container exclusions remain available.\n"));
         }
 
         Hook::FCallbackOptions tick_options{};
@@ -448,16 +448,35 @@ namespace NearbyCrafting
 
         request_state->active.store(true, std::memory_order_release);
         Output::send<LogLevel::Verbose>(
-            STR("[NearbyCrafting] Nearby deposit shortcut installed (key={}, modifier-mask={}, benches={}, exclusions={}).\n"),
+            STR("[NearbyCrafting] Nearby deposit shortcut installed (key={}, modifier-mask={}, benches={}, item-exclusions={}, container-exclusions={}).\n"),
             narrow_ascii(m_config.deposit_key),
             m_config.deposit_modifier_mask,
             m_config.deposit_include_bench_inventories,
-            m_normalized_deposit_exclusions.size());
+            m_normalized_deposit_exclusions.size(),
+            m_normalized_deposit_container_exclusions.size());
         return true;
     }
 
     auto NearbyCraftingMod::update_deposit_exclusions(const Config& config) -> bool
     {
+        std::vector<std::wstring> normalized_container_exclusions{};
+        normalized_container_exclusions.reserve(config.deposit_excluded_containers.size());
+        for (const auto& exclusion : config.deposit_excluded_containers)
+        {
+            auto normalized = normalize_container_class_name(narrow_ascii(exclusion));
+            if (normalized.empty())
+            {
+                m_normalized_deposit_container_exclusions.clear();
+                return false;
+            }
+            normalized_container_exclusions.emplace_back(std::move(normalized));
+        }
+        std::ranges::sort(normalized_container_exclusions);
+        normalized_container_exclusions.erase(
+            std::unique(normalized_container_exclusions.begin(), normalized_container_exclusions.end()),
+            normalized_container_exclusions.end());
+        m_normalized_deposit_container_exclusions = std::move(normalized_container_exclusions);
+
         std::vector<std::wstring> normalized_exclusions{};
         normalized_exclusions.reserve(config.deposit_excluded_items.size());
         for (const auto& exclusion : config.deposit_excluded_items)
@@ -925,6 +944,7 @@ namespace NearbyCrafting
         m_icarus_controller_class = nullptr;
         m_deposit_filter_bindings = {};
         m_normalized_deposit_exclusions.clear();
+        m_normalized_deposit_container_exclusions.clear();
     }
 
     auto NearbyCraftingMod::install_config_reload_feature() -> bool
@@ -1047,7 +1067,7 @@ namespace NearbyCrafting
         if (!update_deposit_exclusions(reloaded))
         {
             Output::send<LogLevel::Warning>(
-                STR("[NearbyCrafting] Deposit exclusions from the reloaded configuration could not be prepared safely and were disabled; Quick Deposit will continue without exclusion filtering.\n"));
+                STR("[NearbyCrafting] Deposit item exclusions from the reloaded configuration could not be prepared safely and were disabled; container exclusions remain available.\n"));
         }
 
         m_config = std::move(reloaded);
@@ -1057,7 +1077,7 @@ namespace NearbyCrafting
         m_hook_error_logged = false;
 
         Output::send<LogLevel::Normal>(
-            STR("[NearbyCrafting] Configuration reloaded (radius={} cm, inventory-limit={}, bench-cache={} ms, player-cache={} ms, craft-benches={}, deposit-benches={}, deposit-exclusions={}, exclude-client-only={}, exclude-remove-only={}).\n"),
+            STR("[NearbyCrafting] Configuration reloaded (radius={} cm, inventory-limit={}, bench-cache={} ms, player-cache={} ms, craft-benches={}, deposit-benches={}, item-exclusions={}, container-exclusions={}, exclude-client-only={}, exclude-remove-only={}).\n"),
             m_config.scan_radius_centimeters,
             m_config.max_nearby_inventories,
             m_config.bench_cache_refresh_milliseconds,
@@ -1065,6 +1085,7 @@ namespace NearbyCrafting
             m_config.include_bench_inventories,
             m_config.deposit_include_bench_inventories,
             m_normalized_deposit_exclusions.size(),
+            m_normalized_deposit_container_exclusions.size(),
             m_config.exclude_client_only_inventories,
             m_config.exclude_remove_only_inventories);
     }
@@ -1119,6 +1140,13 @@ namespace NearbyCrafting
             }
 
             auto* source_actor = static_cast<AActor*>(source_object);
+            auto* source_class = source_actor->GetClassPrivate();
+            if (source_class && is_container_class_excluded(
+                    source_class->GetNamePrivate().ToString(),
+                    m_normalized_deposit_container_exclusions))
+            {
+                continue;
+            }
             if (source_actor->GetWorld() != player_world)
             {
                 continue;

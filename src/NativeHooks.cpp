@@ -48,6 +48,11 @@ namespace NearbyCrafting
 
         static_assert(std::size(hook_specs) == generic_crafting_hook_count);
 
+        constexpr auto native_detour_schemes =
+            static_cast<PLH::x64Detour::detour_scheme_t>(
+                PLH::x64Detour::VALLOC2 | PLH::x64Detour::INPLACE);
+        constexpr std::uintptr_t minimum_inplace_detour_target_span = 32;
+
         SRWLOCK server_queue_callback_lock = SRWLOCK_INIT;
         SRWLOCK repair_callback_lock = SRWLOCK_INIT;
 
@@ -107,7 +112,27 @@ namespace NearbyCrafting
             {
                 return static_cast<std::size_t>(m_hookSize);
             }
+
+            [[nodiscard]] auto chosen_scheme() const noexcept
+                -> PLH::x64Detour::detour_scheme_t
+            {
+                return m_chosen_scheme;
+            }
         };
+
+        auto detour_scheme_name(
+            const PLH::x64Detour::detour_scheme_t scheme) noexcept -> const wchar_t*
+        {
+            switch (scheme)
+            {
+            case PLH::x64Detour::VALLOC2:
+                return L"VALLOC2";
+            case PLH::x64Detour::INPLACE:
+                return L"INPLACE";
+            default:
+                return L"UNKNOWN";
+            }
+        }
 
         struct PeImage
         {
@@ -443,7 +468,16 @@ namespace NearbyCrafting
             std::uintptr_t target) -> bool
         {
             const auto target_section = find_executable_section(image, target);
-            if (!target_section)
+            const auto target_function = find_runtime_function(image, target);
+            if (!target_section || !target_function ||
+                target_function->begin != target ||
+                target_function->end - target < minimum_inplace_detour_target_span ||
+                target_function->end > target_section->end ||
+                !is_accessible_memory(
+                    reinterpret_cast<const void*>(target),
+                    minimum_inplace_detour_target_span,
+                    false,
+                    true))
             {
                 return false;
             }
@@ -453,9 +487,8 @@ namespace NearbyCrafting
             // decodable function entry.
             PLH::MemAccessor memory_accessor;
             PLH::ZydisDisassembler disassembler(PLH::Mode::x64);
-            const auto target_scan_end = std::min(
-                target_section->end,
-                target + static_cast<std::uintptr_t>(32));
+            const auto target_scan_end =
+                target + minimum_inplace_detour_target_span;
             const auto target_instructions = disassembler.disassemble(
                 target, target, target_scan_end, memory_accessor);
             auto first_semantic_instruction = std::size_t{};
@@ -1171,9 +1204,7 @@ namespace NearbyCrafting
             &m_server_queue_trampoline);
         auto* const detour_audit = audited_detour.get();
         m_server_queue_detour = std::move(audited_detour);
-        // Keep the required queue hook on PolyHook's conservative near-allocation
-        // scheme; never fall back to in-place or code-cave patching.
-        m_server_queue_detour->setDetourScheme(PLH::x64Detour::VALLOC2);
+        m_server_queue_detour->setDetourScheme(native_detour_schemes);
         const auto hook_succeeded = m_server_queue_detour->hook();
         if (!hook_succeeded)
         {
@@ -1227,7 +1258,8 @@ namespace NearbyCrafting
         s_server_queue_hook_owner.store(this, std::memory_order_release);
 
         Output::send<LogLevel::Verbose>(
-            STR("[NearbyCrafting] Installed native server queue hook with owned inventory marshalling (patched-span={} bytes).\n"),
+            STR("[NearbyCrafting] Installed native server queue hook with owned inventory marshalling (scheme={}, patched-span={} bytes).\n"),
+            detour_scheme_name(detour_audit->chosen_scheme()),
             patched_size);
         return true;
     }
@@ -1404,10 +1436,7 @@ namespace NearbyCrafting
             &m_repair_material_lookup_trampoline);
         auto* const detour_audit = audited_detour.get();
         m_repair_material_lookup_detour = std::move(audited_detour);
-        // Restrict PolyHook to its near-allocation scheme. The in-place and code-cave
-        // fallbacks modify more game code and are not appropriate for an optional
-        // compatibility-sensitive feature.
-        m_repair_material_lookup_detour->setDetourScheme(PLH::x64Detour::VALLOC2);
+        m_repair_material_lookup_detour->setDetourScheme(native_detour_schemes);
         const auto hook_succeeded = m_repair_material_lookup_detour->hook();
         if (!hook_succeeded)
         {
@@ -1459,7 +1488,8 @@ namespace NearbyCrafting
             m_repair_material_lookup_trampoline, std::memory_order_release);
         s_repair_hook_owner.store(this, std::memory_order_release);
         Output::send<LogLevel::Verbose>(
-            STR("[NearbyCrafting] Installed native repair material lookup hook (patched-span={} bytes).\n"),
+            STR("[NearbyCrafting] Installed native repair material lookup hook (scheme={}, patched-span={} bytes).\n"),
+            detour_scheme_name(detour_audit->chosen_scheme()),
             patched_size);
         return true;
     }

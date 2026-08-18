@@ -26,6 +26,18 @@ namespace NearbyCrafting
     using namespace RC::Unreal;
     using namespace Detail;
 
+    auto NearbyCraftingMod::update_crafting_exclusions(const Config& config) -> void
+    {
+        std::unordered_set<std::wstring> normalized_exclusions{};
+        normalized_exclusions.reserve(config.crafting_excluded_containers.size());
+        for (const auto& exclusion : config.crafting_excluded_containers)
+        {
+            normalized_exclusions.emplace(
+                normalize_container_class_name(narrow_ascii(exclusion)));
+        }
+        m_normalized_crafting_container_exclusions = std::move(normalized_exclusions);
+    }
+
     auto NearbyCraftingMod::seed_source_registry() -> void
     {
         if (!IsInGameThreadRaw())
@@ -137,6 +149,7 @@ namespace NearbyCrafting
                 const auto& old_source = existing->second;
                 auto unchanged = old_source.is_storage == new_source.is_storage &&
                     old_source.is_bench == new_source.is_bench &&
+                    old_source.is_crafting_excluded == new_source.is_crafting_excluded &&
                     old_source.inventories.size() == new_source.inventories.size();
                 for (std::size_t index = 0; unchanged && index < old_source.inventories.size(); ++index)
                 {
@@ -261,6 +274,7 @@ namespace NearbyCrafting
         // actor with a processing component as a bench.
         source.is_storage = classification.is_storage && !classification.is_bench;
         source.is_bench = classification.is_bench;
+        source.is_crafting_excluded = classification.is_crafting_excluded;
 
         std::unordered_set<UObject*> seen{};
         const auto append_inventory = [this, &source, &seen](UObject* inventory) {
@@ -596,7 +610,8 @@ namespace NearbyCrafting
 
         for (const auto& item : m_source_registry)
         {
-            if (item.second.is_bench && !m_config.include_bench_inventories)
+            if (item.second.is_crafting_excluded ||
+                (item.second.is_bench && !m_config.include_bench_inventories))
             {
                 continue;
             }
@@ -744,26 +759,35 @@ namespace NearbyCrafting
                 std::memset(&processing_components, 0, sizeof(processing_components));
             }
         }
+        if ((classification.is_storage || classification.is_bench) &&
+            !m_normalized_crafting_container_exclusions.empty())
+        {
+            classification.is_crafting_excluded =
+                m_normalized_crafting_container_exclusions.contains(
+                    normalize_container_class_name(actor_class->GetNamePrivate().ToString()));
+        }
 
         m_source_class_cache.emplace(actor_class, classification);
 
         if (classification.is_storage || classification.is_bench)
         {
             Output::send<LogLevel::Verbose>(
-                STR("[NearbyCrafting] Deposit container identifier: {} (storage={}, bench={}).\n"),
+                STR("[NearbyCrafting] Deposit container identifier: {} (storage={}, bench={}, crafting-excluded={}).\n"),
                 actor_class->GetNamePrivate().ToString(),
                 classification.is_storage,
-                classification.is_bench);
+                classification.is_bench,
+                classification.is_crafting_excluded);
         }
 
 #if defined(NEARBYCRAFTING_DEBUG)
         if (classification.is_storage || classification.is_bench)
         {
             Output::send<LogLevel::Normal>(
-                STR("[NearbyCrafting][DEBUG] Classified source actor class {} (storage={}, bench={}, cached-classes={}).\n"),
+                STR("[NearbyCrafting][DEBUG] Classified source actor class {} (storage={}, bench={}, crafting-excluded={}, cached-classes={}).\n"),
                 actor_class->GetNamePrivate().ToString(),
                 classification.is_storage,
                 classification.is_bench,
+                classification.is_crafting_excluded,
                 m_source_class_cache.size());
         }
 #endif

@@ -89,6 +89,9 @@ still require a restart, as listed below.
 - `MaxNearbyInventories` limits how many nearby inventories can be checked. Storage
   containers fill this limit first; crafting-station inventories are added afterward.
 - `IncludeBenchInventories` controls whether nearby crafting stations can supply items.
+- `CraftingExcludedContainers` is a comma-separated list of container Blueprint class
+  names that crafting and repairs must skip. Search `UE4SS.log` for `Deposit container identifier`
+  and copy the value. Identifiers generally look like `BP_Bench_Name_C`.
 - `RepairsEnabled` enables nearby inventory repairs. Set it to `false` and restart Icarus
   to skip native repair-hook installation when troubleshooting compatibility problems.
 - `DepositExcludedItems` is a comma-separated list of full in-game item names that
@@ -128,6 +131,7 @@ configuration reload:
 - `ScanRadiusMeters`
 - `MaxNearbyInventories`
 - `IncludeBenchInventories`
+- `CraftingExcludedContainers`
 - `BenchCacheRefreshMilliseconds`
 - `PlayerCacheRefreshMilliseconds`
 - `DepositIncludeBenchInventories`

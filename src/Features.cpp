@@ -1064,6 +1064,7 @@ namespace NearbyCrafting
         }
 
         auto reloaded = merge_reloadable_config(m_config, loaded.config);
+        update_crafting_exclusions(reloaded);
         if (!update_deposit_exclusions(reloaded))
         {
             Output::send<LogLevel::Warning>(
@@ -1077,12 +1078,13 @@ namespace NearbyCrafting
         m_hook_error_logged = false;
 
         Output::send<LogLevel::Normal>(
-            STR("[NearbyCrafting] Configuration reloaded (radius={} cm, inventory-limit={}, bench-cache={} ms, player-cache={} ms, craft-benches={}, deposit-benches={}, item-exclusions={}, container-exclusions={}, exclude-client-only={}, exclude-remove-only={}).\n"),
+            STR("[NearbyCrafting] Configuration reloaded (radius={} cm, inventory-limit={}, bench-cache={} ms, player-cache={} ms, craft-benches={}, crafting-container-exclusions={}, deposit-benches={}, item-exclusions={}, deposit-container-exclusions={}, exclude-client-only={}, exclude-remove-only={}).\n"),
             m_config.scan_radius_centimeters,
             m_config.max_nearby_inventories,
             m_config.bench_cache_refresh_milliseconds,
             m_config.player_cache_refresh_milliseconds,
             m_config.include_bench_inventories,
+            m_normalized_crafting_container_exclusions.size(),
             m_config.deposit_include_bench_inventories,
             m_normalized_deposit_exclusions.size(),
             m_normalized_deposit_container_exclusions.size(),

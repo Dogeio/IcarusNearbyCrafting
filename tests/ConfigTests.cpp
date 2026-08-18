@@ -57,6 +57,7 @@ auto main() -> int
             "BenchCacheRefreshMilliseconds=5000\n"
             "PlayerCacheRefreshMilliseconds=250\n"
             "IncludeBenchInventories=false\n"
+            "CraftingExcludedContainers=BP_MortarAndPestle_C, bp_mortarandpestle_c, BP_Metal_Cupboard_C\n"
             "RepairsEnabled=false\n"
             "DepositEnabled=false\n"
             "DepositKey=F8\n"
@@ -75,6 +76,9 @@ auto main() -> int
         expect(valid.config.bench_cache_refresh_milliseconds == 5000, "bench refresh should be applied");
         expect(valid.config.player_cache_refresh_milliseconds == 250, "player refresh should be applied");
         expect(!valid.config.include_bench_inventories, "bench inventory setting should be applied");
+        expect(valid.config.crafting_excluded_containers.size() == 2, "crafting container exclusions should be parsed and deduplicated");
+        expect(valid.config.crafting_excluded_containers[0] == "BP_MortarAndPestle_C", "crafting exclusion spelling should be preserved");
+        expect(valid.config.crafting_excluded_containers[1] == "BP_Metal_Cupboard_C", "bench and storage exclusions should both be accepted");
         expect(!valid.config.repairs_enabled, "repairs enabled setting should be applied");
         expect(!valid.config.deposit_enabled, "deposit enabled setting should be applied");
         expect(valid.config.deposit_key == "F8", "deposit key should be applied");
@@ -153,6 +157,12 @@ auto main() -> int
         expect(empty_deposit_exclusions.warnings.empty(), "an empty deposit exclusion list should be accepted");
         expect(empty_deposit_exclusions.config.deposit_excluded_items.empty(), "an empty exclusion list should keep the fast path enabled");
 
+        const auto empty_crafting_container_exclusions = load_text_config(
+            "empty-crafting-container-exclusions",
+            "CraftingExcludedContainers=\n");
+        expect(empty_crafting_container_exclusions.warnings.empty(), "an empty crafting container exclusion list should be accepted");
+        expect(empty_crafting_container_exclusions.config.crafting_excluded_containers.empty(), "crafting container exclusions should be empty by default");
+
         const auto invalid_deposit_exclusions = load_text_config(
             "invalid-deposit-exclusions",
             "DepositExcludedItems=Composite Arrow,,12-Gauge Slug\n");
@@ -226,6 +236,7 @@ auto main() -> int
         changed.bench_cache_refresh_milliseconds = 45000;
         changed.player_cache_refresh_milliseconds = 750;
         changed.include_bench_inventories = false;
+        changed.crafting_excluded_containers = {"BP_MortarAndPestle_C", "BP_Metal_Cupboard_C"};
         changed.deposit_include_bench_inventories = false;
         changed.deposit_excluded_items = {"Composite Arrow"};
         changed.deposit_excluded_containers = {"BP_Deep_Freeze_C", "BP_IceBox_C"};
@@ -238,6 +249,7 @@ auto main() -> int
         expect(reloaded.bench_cache_refresh_milliseconds == 45000, "reload should apply the bench cache interval");
         expect(reloaded.player_cache_refresh_milliseconds == 750, "reload should apply the player cache interval");
         expect(!reloaded.include_bench_inventories, "reload should apply crafting bench inclusion");
+        expect(reloaded.crafting_excluded_containers == changed.crafting_excluded_containers, "reload should apply crafting container exclusions");
         expect(!reloaded.deposit_include_bench_inventories, "reload should apply deposit bench inclusion");
         expect(reloaded.deposit_excluded_items == changed.deposit_excluded_items, "reload should apply deposit exclusions");
         expect(reloaded.deposit_excluded_containers == changed.deposit_excluded_containers, "reload should apply container exclusions");

@@ -225,7 +225,7 @@ namespace NearbyCrafting
             return items;
         }
 
-        auto parse_deposit_excluded_containers(const std::string& value) -> std::vector<std::string>
+        auto parse_container_class_names(const std::string& value) -> std::vector<std::string>
         {
             std::vector<std::string> containers{};
             std::size_t start{};
@@ -358,6 +358,7 @@ namespace NearbyCrafting
         merged.bench_cache_refresh_milliseconds = loaded.bench_cache_refresh_milliseconds;
         merged.player_cache_refresh_milliseconds = loaded.player_cache_refresh_milliseconds;
         merged.include_bench_inventories = loaded.include_bench_inventories;
+        merged.crafting_excluded_containers = loaded.crafting_excluded_containers;
         merged.deposit_include_bench_inventories = loaded.deposit_include_bench_inventories;
         merged.deposit_excluded_items = loaded.deposit_excluded_items;
         merged.deposit_excluded_containers = loaded.deposit_excluded_containers;
@@ -436,6 +437,11 @@ namespace NearbyCrafting
                 {
                     result.config.include_bench_inventories = parse_bool(value);
                 }
+                else if (key == "craftingexcludedcontainers")
+                {
+                    result.config.crafting_excluded_containers =
+                        parse_container_class_names(value);
+                }
                 else if (key == "repairsenabled")
                 {
                     result.config.repairs_enabled = parse_bool(value);
@@ -463,7 +469,7 @@ namespace NearbyCrafting
                 else if (key == "depositexcludedcontainers")
                 {
                     result.config.deposit_excluded_containers =
-                        parse_deposit_excluded_containers(value);
+                        parse_container_class_names(value);
                 }
                 else if (key == "excludeclientonlyinventories")
                 {

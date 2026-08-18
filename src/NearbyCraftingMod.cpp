@@ -29,6 +29,7 @@ namespace NearbyCrafting
         ModAuthors = STR("Dogeio");
         const auto loaded = load_config(config_path());
         m_config = loaded.config;
+        update_crafting_exclusions(m_config);
 
         if (!loaded.file_found)
         {
@@ -41,13 +42,14 @@ namespace NearbyCrafting
         }
 
         Output::send<LogLevel::Verbose>(
-            STR("[NearbyCrafting] Native mod loaded (enabled={}, reload-key={}, radius={} cm, bench-cache={} ms, player-cache={} ms, bench-sources={}, repairs={}, deposit={}, deposit-key={}, deposit-modifiers={}, deposit-benches={}, item-exclusions={}, container-exclusions={}).\n"),
+            STR("[NearbyCrafting] Native mod loaded (enabled={}, reload-key={}, radius={} cm, bench-cache={} ms, player-cache={} ms, bench-sources={}, crafting-container-exclusions={}, repairs={}, deposit={}, deposit-key={}, deposit-modifiers={}, deposit-benches={}, item-exclusions={}, deposit-container-exclusions={}).\n"),
             m_config.enabled,
             narrow_ascii(m_config.reload_config_key),
             m_config.scan_radius_centimeters,
             m_config.bench_cache_refresh_milliseconds,
             m_config.player_cache_refresh_milliseconds,
             m_config.include_bench_inventories,
+            m_normalized_crafting_container_exclusions.size(),
             m_config.repairs_enabled,
             m_config.deposit_enabled,
             narrow_ascii(m_config.deposit_key),

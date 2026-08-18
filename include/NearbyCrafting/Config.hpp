@@ -22,6 +22,7 @@ namespace NearbyCrafting
         int bench_cache_refresh_milliseconds{30000};
         int player_cache_refresh_milliseconds{1000};
         bool include_bench_inventories{true};
+        std::vector<std::string> crafting_excluded_containers{};
         bool repairs_enabled{true};
         bool deposit_enabled{true};
         std::string deposit_key{"E"};

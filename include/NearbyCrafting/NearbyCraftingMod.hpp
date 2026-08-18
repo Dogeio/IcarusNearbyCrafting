@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <Mod/CppUserModBase.hpp>
@@ -68,6 +69,7 @@ namespace NearbyCrafting
             std::vector<RC::Unreal::FWeakObjectPtr> inventories{};
             bool is_storage{false};
             bool is_bench{false};
+            bool is_crafting_excluded{false};
         };
 
         struct SourceClassInfo
@@ -75,6 +77,7 @@ namespace NearbyCrafting
             RC::Unreal::FWeakObjectPtr actor_class{};
             bool is_storage{false};
             bool is_bench{false};
+            bool is_crafting_excluded{false};
         };
 
         struct BenchCacheEntry
@@ -156,6 +159,7 @@ namespace NearbyCrafting
         auto install_deposit_feature() -> bool;
         auto install_deposit_filter_bindings() -> bool;
         auto update_deposit_exclusions(const Config& config) -> bool;
+        auto update_crafting_exclusions(const Config& config) -> void;
         auto remove_deposit_feature() -> void;
         auto install_config_reload_feature() -> bool;
         auto remove_config_reload_feature() -> void;
@@ -235,6 +239,7 @@ namespace NearbyCrafting
         DepositFilterBindings m_deposit_filter_bindings{};
         std::vector<std::wstring> m_normalized_deposit_exclusions{};
         std::vector<std::wstring> m_normalized_deposit_container_exclusions{};
+        std::unordered_set<std::wstring> m_normalized_crafting_container_exclusions{};
         std::vector<std::unique_ptr<HookBinding>> m_hooks{};
         std::unique_ptr<PLH::x64Detour> m_server_queue_detour{};
         std::uint64_t m_server_queue_trampoline{};
